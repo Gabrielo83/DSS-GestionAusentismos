@@ -1,4 +1,4 @@
-# DSS Salud Ocupacional
+# DSS Detección de Riesgos de Salud
 
 Sistema web para registrar ausencias, validar certificados médicos, administrar legajos y visualizar indicadores de salud ocupacional en tiempo real.
 
