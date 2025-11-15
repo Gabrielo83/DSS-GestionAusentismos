@@ -48,6 +48,18 @@ window.runDemoSeed()
 4. **Legajos médicos**: buscar al empleado, filtrar por periodo y revisar el historial actualizado.
 5. **Dashboard**: verificar cómo se actualizan métricas, badges y tablas (ordenar por “Recibido” para ver los últimos casos).
 
+## Login
+
+![Login](./src/assets/gifs/login.gif)
+
+## Dashboard
+
+![Dashboard](./src/assets/gifs/dashboard.gif)
+
+## Legajo Médico
+
+![Legajo Medico](./src/assets/gifs/legajo-medico.gif)
+
 ## Próximos pasos
 
 - Integración con Firebase (Auth + Firestore + Storage).
