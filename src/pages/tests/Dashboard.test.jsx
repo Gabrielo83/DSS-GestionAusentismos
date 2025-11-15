@@ -30,7 +30,7 @@ describe('Funcionalidad del Dashboard', () => {
     const navItems = ['Panel de Control', 'Registro Ausencia', 'Validacion Medica', 'Legajos Medicos']
     navItems.forEach((label) => expect(screen.getAllByRole('link', { name: new RegExp(label, 'i') }).length).toBeGreaterThan(0))
 
-    expect(screen.getAllByLabelText(/Validacion Medica badge/i)).toHaveLength(1)
+    expect(screen.queryAllByLabelText(/Validacion Medica badge/i)).toHaveLength(0)
     expect(screen.queryAllByLabelText(/Panel de Control badge/i)).toHaveLength(0)
     expect(screen.queryAllByLabelText(/Registro Ausencia badge/i)).toHaveLength(0)
     expect(screen.queryAllByLabelText(/Legajos Medicos badge/i)).toHaveLength(0)
