@@ -16,7 +16,8 @@ Sistema web para registrar ausencias, validar certificados médicos, administrar
 - React + Vite + TailwindCSS
 - React Router
 - Context API para autenticación simulada
-- LocalStorage como datastore temporal (próximo paso: Firebase)
+- LocalStorage como datastore temporal
+- Firebase - BaaS
 - Vitest + Testing Library para pruebas unitarias/integrales
 
 ## Configuración
@@ -40,9 +41,9 @@ npm test
 window.runDemoSeed()
 ```
 
-## Demo rápida sugerida
+## Demo
 
-1. **Login** con usuario demo (ver placeholders en el formulario).
+1. **Login**
 2. **Registrar ausencia**: seleccionar un empleado, completar diagnóstico, adjuntar archivo y enviar para revisión.
 3. **Validación médica**: abrir el caso recién creado, visualizar el documento, asignar riesgo, aprobar/rechazar.
 4. **Legajos médicos**: buscar al empleado, filtrar por periodo y revisar el historial actualizado.
