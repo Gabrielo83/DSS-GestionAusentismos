@@ -55,7 +55,29 @@ const syncFromIndexedDb = async () => {
 export const readEmployeeHistory = (employeeKey) => {
   if (!employeeKey) return [];
   const records = readRawHistory();
-  return records[employeeKey] ?? [];
+  const entries = records[employeeKey] ?? [];
+  const seen = new Set();
+  const deduped = [];
+  entries.forEach((item) => {
+    if (!item) return;
+    const key = item.id || item.reference;
+    if (key) {
+      if (seen.has(key)) return;
+      seen.add(key);
+    }
+    deduped.push(item);
+  });
+  // Si hubo duplicados, persistimos la versión limpia
+  if (deduped.length !== entries.length) {
+    records[employeeKey] = deduped;
+    persistHistory(records);
+  }
+  // Orden cronológico ascendente por issued (más antiguo primero)
+  return deduped.sort((a, b) => {
+    const aDate = a?.issued ? new Date(a.issued).getTime() : 0;
+    const bDate = b?.issued ? new Date(b.issued).getTime() : 0;
+    return aDate - bDate;
+  });
 };
 
 export const readAllHistory = () => readRawHistory();
@@ -65,28 +87,23 @@ export const appendEmployeeHistory = (employeeKey, record) => {
   const records = readRawHistory();
   const existing = records[employeeKey] ?? [];
   const normalizedId = record.id || record.reference;
-  if (normalizedId) {
-    const matchIndex = existing.findIndex(
-      (item) =>
-        item &&
-        (item.id === normalizedId ||
-          (item.reference &&
-            record.reference &&
-            item.reference === record.reference)),
-    );
-    if (matchIndex !== -1) {
-      existing[matchIndex] = {
-        ...existing[matchIndex],
-        ...record,
-        id: normalizedId,
-      };
+  const next = [];
+  let inserted = false;
+  existing.forEach((item) => {
+    if (!item) return;
+    const itemKey = item.id || item.reference;
+    if (normalizedId && itemKey === normalizedId) {
+      // merge
+      next.push({ ...item, ...record, id: normalizedId });
+      inserted = true;
     } else {
-      existing.push({ ...record, id: normalizedId });
+      next.push(item);
     }
-  } else {
-    existing.push(record);
+  });
+  if (!inserted) {
+    next.push({ ...record, id: normalizedId });
   }
-  records[employeeKey] = existing;
+  records[employeeKey] = next;
   persistHistory(records);
 };
 

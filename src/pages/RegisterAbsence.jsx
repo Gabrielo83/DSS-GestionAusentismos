@@ -538,27 +538,46 @@ const handleEmployeeNameBlur = () => {
     }
   };
 
+const parseLocalDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 const rangesOverlap = (aStart, aEnd, bStart, bEnd) => {
-    if (!aStart || !aEnd || !bStart || !bEnd) return false;
-    const aS = new Date(aStart).getTime();
-    const aE = new Date(aEnd).getTime();
-    const bS = new Date(bStart).getTime();
-    const bE = new Date(bEnd).getTime();
-    return aS <= bE && bS <= aE;
-  };
+  if (!aStart || !aEnd || !bStart || !bEnd) return false;
+  const aS = parseLocalDate(aStart)?.getTime();
+  const aE = parseLocalDate(aEnd)?.getTime();
+  const bS = parseLocalDate(bStart)?.getTime();
+  const bE = parseLocalDate(bEnd)?.getTime();
+  if ([aS, aE, bS, bE].some((v) => Number.isNaN(v))) return false;
+  return aS <= bE && bS <= aE;
+};
 
 const formatDateEs = (value) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d)) return value;
-    const day = `${d.getDate()}`.padStart(2, "0");
-    const month = `${d.getMonth() + 1}`.padStart(2, "0");
-    return `${day}/${month}/${d.getFullYear()}`;
-  };
+  if (!value) return "";
+  const d = parseLocalDate(value);
+  if (!d) return value;
+  const day = `${d.getDate()}`.padStart(2, "0");
+  const month = `${d.getMonth() + 1}`.padStart(2, "0");
+  return `${day}/${month}/${d.getFullYear()}`;
+};
 
 const updateAbsenceDays = (start, end) => {
     if (start && end) {
-      const diffMs = Date.parse(end) - Date.parse(start);
+      const aS = parseLocalDate(start)?.getTime();
+      const aE = parseLocalDate(end)?.getTime();
+      if (!aS || !aE || Number.isNaN(aS) || Number.isNaN(aE) || aE < aS) {
+        setAbsenceDays(null);
+        return;
+      }
+      const diffMs = aE - aS;
       if (isNaN(diffMs) || diffMs < 0) {
         setAbsenceDays(null);
         return;

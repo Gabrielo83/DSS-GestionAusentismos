@@ -24,6 +24,19 @@ const formatISO = (date) => {
   return `${y}-${m}-${d}`;
 };
 
+const parseLocalDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  // Trata "YYYY-MM-DD" como fecha local sin zona
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 const sameDay = (a, b) =>
   a &&
   b &&
@@ -60,9 +73,9 @@ const getMonthGrid = (viewDate) => {
 
 const normalizeRange = (range) => {
   if (!range?.start || !range?.end) return null;
-  const start = new Date(range.start);
-  const end = new Date(range.end);
-  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  const start = parseLocalDate(range.start);
+  const end = parseLocalDate(range.end);
+  if (!start || !end) return null;
   return { start, end };
 };
 
@@ -75,11 +88,19 @@ export default function DatePicker({
   placeholder = "dd/mm/aaaa",
   markedRanges = [],
 }) {
-  const initialDate = value ? new Date(value) : new Date();
+  const initialParsed = value ? parseLocalDate(value) : null;
+  const initialDate = initialParsed || new Date();
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(initialDate);
   const containerRef = useRef(null);
-  const selectedDate = value ? new Date(value) : null;
+  const selectedDate = value ? parseLocalDate(value) : null;
+  const displayLabel = selectedDate
+    ? selectedDate.toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : placeholder;
   const today = useMemo(() => new Date(), []);
 
   useEffect(() => {
@@ -102,7 +123,8 @@ export default function DatePicker({
 
   useEffect(() => {
     if (value) {
-      setViewDate(new Date(value));
+      const parsed = parseLocalDate(value);
+      if (parsed) setViewDate(parsed);
     }
   }, [value]);
 
@@ -148,13 +170,7 @@ export default function DatePicker({
         }`}
       >
         <span className={value ? "" : "text-slate-500 dark:text-slate-500"}>
-          {value
-            ? new Date(value).toLocaleDateString("es-AR", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
-            : placeholder}
+          {displayLabel}
         </span>
         <svg
           xmlns="http://www.w3.org/2000/svg"

@@ -1696,6 +1696,11 @@ function MedicalValidation({ isDark, onToggleTheme }) {
               {historyModal.records.map((record, index) => {
                 const issuedLabel =
                   formatDateValue(record.issued) || record.issued || "No indicado";
+                const diagnosis =
+                  record.detailedReason ||
+                  record.reason ||
+                  record.notes ||
+                  "Sin diagnostico registrado";
                 return (
                   <div
                     key={record.id}
@@ -1739,6 +1744,14 @@ function MedicalValidation({ isDark, onToggleTheme }) {
                           Institucion
                         </p>
                         <p>{record.institution}</p>
+                      </div>
+                      <div className="sm:col-span-2 md:col-span-3 lg:col-span-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Diagnostico
+                        </p>
+                        <p className="font-semibold text-slate-900 dark:text-white">
+                          {diagnosis}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
