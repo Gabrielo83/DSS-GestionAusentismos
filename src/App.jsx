@@ -8,6 +8,7 @@ import MedicalValidation from './pages/MedicalValidation.jsx'
 import MedicalRecords from './pages/MedicalRecords.jsx'
 import AuthContext from './context/AuthContext.jsx'
 import { MOCK_USERS } from './data/mockUsers.js'
+import { startQueueSync } from './utils/operationQueue.js'
 
 const ROLE_PERMISSIONS = {
   superAdmin: ['dashboard', 'registro', 'certificados', 'validacion', 'legajos'],
@@ -70,6 +71,13 @@ function App() {
       window.localStorage.setItem('sessionEmail', user.email)
     }
   }
+
+  useEffect(() => {
+    const stop = startQueueSync()
+    return () => {
+      if (typeof stop === 'function') stop()
+    }
+  }, [])
 
   const handleLogout = () => {
     setCurrentUser(null)

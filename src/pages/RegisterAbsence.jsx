@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useMemo } from "react";
 import AppHeader from "../components/AppHeader.jsx";
 import DropdownSelect from "../components/DropdownSelect.jsx";
+import DatePicker from "../components/DatePicker.jsx";
 import { mockEmployees } from "../data/mockEmployees.js";
 import {
   readValidationQueue,
@@ -15,6 +16,11 @@ import {
   ABSENCE_DRAFTS_UPDATED_EVENT,
   MEDICAL_VALIDATIONS_UPDATED_EVENT,
 } from "../utils/storageKeys.js";
+import {
+  enqueueOperation,
+  processQueue as processOperationQueue,
+} from "../utils/operationQueue.js";
+import { readEmployeeHistory } from "../utils/historyStorage.js";
 import AuthContext from "../context/AuthContext.jsx";
 
 const employees = mockEmployees;
@@ -236,6 +242,39 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [validationQueue, setValidationQueue] = useState([]);
   const [activeRevisionEntry, setActiveRevisionEntry] = useState(null);
+  const [overlapWarnings, setOverlapWarnings] = useState([]);
+  const overlapRanges = useMemo(() => {
+    if (!formValues.employeeId) return [];
+    const ranges = [];
+    (validationQueue || []).forEach((item) => {
+      if (item.employeeId !== formValues.employeeId) return;
+      if (item.startDate && item.endDate) {
+        ranges.push({ start: item.startDate, end: item.endDate, source: "validations" });
+      }
+    });
+    (drafts || []).forEach((draft) => {
+      if (draft.formValues?.employeeId !== formValues.employeeId) return;
+      const dStart = draft.formValues?.startDate;
+      const dEnd = draft.formValues?.endDate;
+      if (dStart && dEnd) {
+        ranges.push({ start: dStart, end: dEnd, source: "drafts" });
+      }
+    });
+    const historyEntries = readEmployeeHistory(formValues.employeeId) || [];
+    historyEntries.forEach((record) => {
+      if (record.issued) {
+        const endDate =
+          record.endDate ||
+          (record.days
+            ? new Date(new Date(record.issued).getTime() + (Number(record.days) - 1) * 86400000)
+                .toISOString()
+                .slice(0, 10)
+            : record.issued);
+        ranges.push({ start: record.issued, end: endDate, source: "history" });
+      }
+    });
+    return ranges;
+  }, [formValues.employeeId, validationQueue, drafts]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -264,6 +303,59 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
       window.removeEventListener("storage", syncQueue);
     };
   }, []);
+
+  useEffect(() => {
+    if (!formValues.employeeId || !formValues.startDate || !formValues.endDate) {
+      setOverlapWarnings([]);
+      return;
+    }
+    const employeeKey = formValues.employeeId;
+    const conflicts = [];
+
+    (validationQueue || []).forEach((item) => {
+      if (item.employeeId !== employeeKey) return;
+      if (rangesOverlap(formValues.startDate, formValues.endDate, item.startDate, item.endDate)) {
+        const s = formatDateEs(item.startDate);
+        const e = formatDateEs(item.endDate);
+        conflicts.push(
+          `Solicitud existente (${item.reference || "sin ref"}) del ${s} al ${e}.`,
+        );
+      }
+    });
+
+    (drafts || []).forEach((draft) => {
+      if (draft.formValues?.employeeId !== employeeKey) return;
+      const dStart = draft.formValues?.startDate;
+      const dEnd = draft.formValues?.endDate;
+      if (rangesOverlap(formValues.startDate, formValues.endDate, dStart, dEnd)) {
+        const s = formatDateEs(dStart);
+        const e = formatDateEs(dEnd);
+        conflicts.push(
+          `Borrador registrado del ${s || "sin inicio"} al ${e || "sin fin"}.`,
+        );
+      }
+    });
+
+    const historyEntries = readEmployeeHistory(employeeKey) || [];
+    historyEntries.forEach((record) => {
+      const endRange =
+        record.endDate ||
+        (record.days
+          ? new Date(new Date(record.issued).getTime() + (Number(record.days) - 1) * 86400000)
+              .toISOString()
+              .slice(0, 10)
+          : record.issued);
+      if (rangesOverlap(formValues.startDate, formValues.endDate, record.issued, endRange)) {
+        const issued = formatDateEs(record.issued);
+        const endFmt = formatDateEs(endRange);
+        conflicts.push(
+          `Histórico (${record.reference || record.title}) emitido el ${issued}${endFmt ? ` (hasta ${endFmt})` : ""}.`,
+        );
+      }
+    });
+
+    setOverlapWarnings(conflicts);
+  }, [formValues.employeeId, formValues.startDate, formValues.endDate, validationQueue, drafts]);
 
   const resetForm = () => {
     setFormValues(createInitialFormValues());
@@ -446,6 +538,24 @@ const handleEmployeeNameBlur = () => {
     }
   };
 
+const rangesOverlap = (aStart, aEnd, bStart, bEnd) => {
+    if (!aStart || !aEnd || !bStart || !bEnd) return false;
+    const aS = new Date(aStart).getTime();
+    const aE = new Date(aEnd).getTime();
+    const bS = new Date(bStart).getTime();
+    const bE = new Date(bEnd).getTime();
+    return aS <= bE && bS <= aE;
+  };
+
+const formatDateEs = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d)) return value;
+    const day = `${d.getDate()}`.padStart(2, "0");
+    const month = `${d.getMonth() + 1}`.padStart(2, "0");
+    return `${day}/${month}/${d.getFullYear()}`;
+  };
+
 const updateAbsenceDays = (start, end) => {
     if (start && end) {
       const diffMs = Date.parse(end) - Date.parse(start);
@@ -460,16 +570,15 @@ const updateAbsenceDays = (start, end) => {
     }
   };
 
-  const handleDateChange = (field) => (event) => {
-    const value = event.target.value;
-    clearError(field);
-    setSubmissionFeedback("");
-    setFormValues((prev) => {
-      const next = { ...prev, [field]: value };
-      updateAbsenceDays(next.startDate, next.endDate);
-      return next;
-    });
-  };
+const handleDateSelect = (field, value) => {
+  clearError(field);
+  setSubmissionFeedback("");
+  setFormValues((prev) => {
+    const next = { ...prev, [field]: value };
+    updateAbsenceDays(next.startDate, next.endDate);
+    return next;
+  });
+};
 
 const handleCertificateUpload = (event) => {
     const file = event.target.files?.[0];
@@ -670,6 +779,14 @@ const clearCertificateFile = () => {
   const handleSubmit = (action) => {
     setSubmissionFeedback("");
     const validationMode = action === "draft" ? "draft" : "approve";
+    if (overlapWarnings.length) {
+      setToastState({
+        visible: true,
+        message: "Hay solapamiento con otras solicitudes/certificados de este empleado.",
+        tone: "bg-amber-600 text-white",
+      });
+      return;
+    }
     if (!validateForm(validationMode)) {
       setToastState({
         visible: true,
@@ -705,6 +822,18 @@ const clearCertificateFile = () => {
       };
       saveDraft(draftPayload);
       setDrafts(readDrafts());
+      enqueueOperation(
+        "saveDraft",
+        {
+          draftId: draftPayload.draftId,
+          employeeId: draftPayload.formValues.employeeId,
+          employeeName: draftPayload.formValues.employeeName,
+          absenceType: draftPayload.formValues.absenceType,
+          payload: draftPayload,
+        },
+        { user: auth?.user?.email || currentUserName },
+      );
+      processOperationQueue();
       setToastState({
         visible: true,
         message: "Borrador guardado para completar mas tarde.",
@@ -718,6 +847,25 @@ const clearCertificateFile = () => {
 
     const draftIdToClear = activeDraftId;
     const result = persistValidationEntry();
+    if (result?.reference) {
+      enqueueOperation(
+        "submitCertificate",
+        {
+          reference: result.reference,
+          employeeId: formValues.employeeId,
+          employeeName: formValues.employeeName,
+          absenceType: formValues.absenceType,
+          detailedReason: formValues.detailedReason,
+          submittedAt: result.submissionTimestamp,
+          wasRevision: isRevisionFlow,
+        },
+        {
+          user: auth?.user?.email || currentUserName,
+          entityId: result.reference,
+        },
+      );
+      processOperationQueue();
+    }
     if (draftIdToClear) {
       removeDraft(draftIdToClear);
       setDrafts(readDrafts());
@@ -988,6 +1136,37 @@ const clearCertificateFile = () => {
               description="Fechas y duracion de la ausencia solicitada"
               icon={sectionIcons.period}
             >
+              {overlapWarnings.length ? (
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100">
+                  <p className="flex items-start gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.8"
+                      stroke="currentColor"
+                      className="h-5 w-5 flex-shrink-0 text-amber-700 dark:text-amber-200"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 9v4m0 4h.01M12 4.5c-4.142 0-7.5 3.358-7.5 7.5s3.358 7.5 7.5 7.5 7.5-3.358 7.5-7.5-3.358-7.5-7.5-7.5z"
+                      />
+                    </svg>
+                    <span className="space-y-1">
+                      <span className="block">Fechas solapadas con otros registros:</span>
+                      {overlapWarnings.map((text, idx) => (
+                        <span key={idx} className="block text-xs font-normal text-amber-700/80 dark:text-amber-100/80">
+                          • {text}
+                        </span>
+                      ))}
+                      <span className="block text-xs font-semibold text-amber-800 dark:text-amber-100">
+                        Ajusta el periodo para evitar certificados duplicados.
+                      </span>
+                    </span>
+                  </p>
+                </div>
+              ) : null}
               <div className="mb-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 dark:bg-slate-900/40 dark:text-slate-200">
                 Duracion estimada:{" "}
                 {absenceDays
@@ -996,18 +1175,13 @@ const clearCertificateFile = () => {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label
-                    htmlFor="start-date"
-                    className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-                  >
-                    Fecha de Inicio
-                  </label>
-                  <input
+                  <DatePicker
                     id="start-date"
-                    type="date"
+                    label="Fecha de Inicio"
                     value={formValues.startDate}
-                    onChange={handleDateChange("startDate")}
-                    className={inputWithError("startDate")}
+                    onChange={(v) => handleDateSelect("startDate", v)}
+                    error={Boolean(formErrors.startDate)}
+                    markedRanges={overlapRanges}
                   />
                   {formErrors.startDate ? (
                     <p className="text-xs text-rose-500">
@@ -1016,18 +1190,13 @@ const clearCertificateFile = () => {
                   ) : null}
                 </div>
                 <div className="space-y-2">
-                  <label
-                    htmlFor="end-date"
-                    className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-                  >
-                    Fecha de Fin
-                  </label>
-                  <input
+                  <DatePicker
                     id="end-date"
-                    type="date"
+                    label="Fecha de Fin"
                     value={formValues.endDate}
-                    onChange={handleDateChange("endDate")}
-                    className={inputWithError("endDate")}
+                    onChange={(v) => handleDateSelect("endDate", v)}
+                    error={Boolean(formErrors.endDate)}
+                    markedRanges={overlapRanges}
                   />
                   {formErrors.endDate ? (
                     <p className="text-xs text-rose-500">

@@ -7,3 +7,5 @@ export const MEDICAL_HISTORY_STORAGE_KEY = "app_medical_history";
 export const MEDICAL_HISTORY_UPDATED_EVENT = "medical-history-updated";
 export const PREVENTIVE_PLANS_STORAGE_KEY = "app_preventive_plans";
 export const PREVENTIVE_PLANS_UPDATED_EVENT = "preventive-plans-updated";
+export const OPERATION_QUEUE_STORAGE_KEY = "app_operation_queue";
+export const OPERATION_QUEUE_UPDATED_EVENT = "operation-queue-updated";

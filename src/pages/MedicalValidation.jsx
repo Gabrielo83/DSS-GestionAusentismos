@@ -18,6 +18,10 @@ import {
   draftTextToPlan,
   planToDraftText,
 } from "../utils/preventivePlan.js";
+import {
+  enqueueOperation,
+  processQueue as processOperationQueue,
+} from "../utils/operationQueue.js";
 import AuthContext from "../context/AuthContext.jsx";
 
 const riskLevelToneMap = {
@@ -493,6 +497,22 @@ function MedicalValidation({ isDark, onToggleTheme }) {
       planRecommendations: updatedEntry.planRecommendations || [],
     };
     appendEmployeeHistory(employeeKey, historyRecord);
+    enqueueOperation(
+      "validateCertificate",
+      {
+        reference: updatedEntry.reference,
+        employeeId: updatedEntry.employeeId,
+        status: actionConfig.status,
+        reviewer: reviewerName,
+        notes: trimmedNotes,
+        risk: entryRisk,
+      },
+      {
+        user: auth?.user?.email || reviewerName,
+        entityId: updatedEntry.reference,
+      },
+    );
+    processOperationQueue();
     setReviewNotes("");
     setRiskScoreError(false);
     closeModal();

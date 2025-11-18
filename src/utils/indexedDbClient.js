@@ -1,6 +1,6 @@
 const DB_NAME = "dss-salud-ocupacional";
-const DB_VERSION = 1;
-const STORE_NAMES = ["validations", "history", "plans", "drafts"];
+const DB_VERSION = 2;
+const STORE_NAMES = ["validations", "history", "plans", "drafts", "queue"];
 
 let dbPromise = null;
 const hasIndexedDb = typeof indexedDB !== "undefined";
