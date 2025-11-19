@@ -490,6 +490,8 @@ function MedicalValidation({ isDark, onToggleTheme }) {
         updatedEntry.certificateType ||
         updatedEntry.absenceType ||
         "Certificado medico cargado en sistema",
+      employee: updatedEntry.employee || selectedCertificate.employee,
+      sector: updatedEntry.sector || selectedCertificate.sector,
       issued: updatedEntry.issueDate || updatedEntry.startDate || timestamp,
       days:
         updatedEntry.absenceDays ??

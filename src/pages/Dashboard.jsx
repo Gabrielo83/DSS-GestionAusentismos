@@ -401,7 +401,7 @@ function Dashboard({ isDark, onToggleTheme }) {
           bestInfo = info;
         }
       });
-      if (bestInfo?.display) {
+      if (bestInfo?.display && bestInfo.count >= MIN_RECURRENT_COUNT) {
         candidates.push({
           ...bestInfo.display,
           count: totalCount,
