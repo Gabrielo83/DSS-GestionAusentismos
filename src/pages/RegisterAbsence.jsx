@@ -3,6 +3,7 @@ import AppHeader from "../components/AppHeader.jsx";
 import DropdownSelect from "../components/DropdownSelect.jsx";
 import DatePicker from "../components/DatePicker.jsx";
 import { mockEmployees } from "../data/mockEmployees.js";
+import { pathologyCategories } from "../data/pathologyCategories.js";
 import {
   readValidationQueue,
   upsertValidationEntry,
@@ -214,6 +215,8 @@ const createInitialFormValues = () => ({
   endDate: "",
   detailedReason: "",
   requiresApproval: "si",
+  pathologyCategory: "",
+  cieCode: "",
 });
 
 function RegisterAbsence({ isDark, onToggleTheme }) {
@@ -456,6 +459,8 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
       endDate,
       detailedReason: entry.detailedReason || "",
       requiresApproval: entry.requiresApproval || "si",
+      pathologyCategory: entry.pathologyCategory || "",
+      cieCode: entry.cieCode || "",
     });
     setAbsenceDays(calculatedDays);
     setCertificateInstitution(entry.institution || "");
@@ -734,6 +739,9 @@ const clearCertificateFile = () => {
     if (!formValues.absenceType) {
       errors.absenceType = "Selecciona un tipo de ausencia.";
     }
+    if (!formValues.pathologyCategory) {
+      errors.pathologyCategory = "Selecciona un grupo de patologia.";
+    }
     if (!formValues.detailedReason.trim()) {
       errors.detailedReason = "Describe el diagnostico detallado.";
     }
@@ -810,6 +818,8 @@ const clearCertificateFile = () => {
       absenceType: formValues.absenceType,
       certificateType: resolveAbsenceTypeLabel(formValues.absenceType),
       institution: certificateInstitution,
+      pathologyCategory: formValues.pathologyCategory,
+      cieCode: formValues.cieCode?.trim() || "",
       issueDate: formValues.startDate,
       validityDate: formValues.endDate,
       notes:
@@ -1293,6 +1303,53 @@ const clearCertificateFile = () => {
                       {formErrors.detailedReason}
                     </p>
                   ) : null}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Grupo de patologia
+                    </label>
+                    <select
+                      value={formValues.pathologyCategory}
+                      onChange={(event) => {
+                        clearError("pathologyCategory");
+                        setFormValues((prev) => ({
+                          ...prev,
+                          pathologyCategory: event.target.value,
+                        }));
+                      }}
+                      className={inputWithError("pathologyCategory")}
+                    >
+                      <option value="">Selecciona una opcion</option>
+                      {pathologyCategories.map((category) => (
+                        <option key={category.value} value={category.value}>
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                    {formErrors.pathologyCategory ? (
+                      <p className="text-xs text-rose-500">
+                        {formErrors.pathologyCategory}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Codigo CIE-10 (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formValues.cieCode}
+                      onChange={(event) =>
+                        setFormValues((prev) => ({
+                          ...prev,
+                          cieCode: event.target.value,
+                        }))
+                      }
+                      placeholder="Ej: M54.5"
+                      className={inputClasses}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

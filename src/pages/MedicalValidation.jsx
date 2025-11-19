@@ -22,6 +22,7 @@ import {
   enqueueOperation,
   processQueue as processOperationQueue,
 } from "../utils/operationQueue.js";
+import { pathologyCategories } from "../data/pathologyCategories.js";
 import AuthContext from "../context/AuthContext.jsx";
 
 const riskLevelToneMap = {
@@ -29,6 +30,13 @@ const riskLevelToneMap = {
   Media: "bg-amber-100 text-amber-700",
   Baja: "bg-emerald-100 text-emerald-700",
 };
+
+const pathologyCategoryMap = Object.fromEntries(
+  pathologyCategories.map((item) => [item.value, item.label]),
+);
+
+const formatPathologyCategory = (value) =>
+  pathologyCategoryMap[value] || value || "No indicado";
 
 const statusOptions = [
   { value: "todos", label: "Todos los estados" },
@@ -1282,6 +1290,22 @@ function MedicalValidation({ isDark, onToggleTheme }) {
                       Diagnostico e institucion
                     </p>
                     <div className="mt-4 space-y-3 text-sm text-slate-800 dark:text-white">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Grupo de patologia
+                        </p>
+                        <p className="font-semibold">
+                          {formatPathologyCategory(selectedCertificate.pathologyCategory)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Codigo CIE-10
+                        </p>
+                        <p className="font-semibold">
+                          {selectedCertificate.cieCode || "No indicado"}
+                        </p>
+                      </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                           Tipo de certificado
