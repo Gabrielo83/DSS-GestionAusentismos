@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import AppHeader from "../components/AppHeader.jsx";
 import mockEmployees from "../data/mockEmployees.js";
+import { pathologyCategories } from "../data/pathologyCategories.js";
 import { readValidationQueue } from "../utils/validationStorage.js";
 import { readAllHistory } from "../utils/historyStorage.js";
 import calculateRiskScore, { mapScoreToRisk } from "../utils/riskUtils.js";
@@ -21,6 +22,10 @@ const levelToneMap = {
   Media: "bg-amber-100 text-amber-700",
   Baja: "bg-emerald-100 text-emerald-700",
 };
+
+const pathologyCategoryMap = new Map(
+  pathologyCategories.map((item) => [item.value, item.label]),
+);
 
 const employeeIndexById = new Map();
 const employeeIndexByName = new Map();
@@ -71,6 +76,12 @@ const formatDateValue = (value) => {
 };
 
 const resolvePathologyLabel = (payload = {}) => {
+  if (payload.pathologyCategory) {
+    const label =
+      pathologyCategoryMap.get(payload.pathologyCategory) ||
+      payload.pathologyCategory;
+    if (label) return label;
+  }
   const fields = [
     payload.detailedReason,
     payload.pathology,
@@ -349,6 +360,7 @@ function Dashboard({ isDark, onToggleTheme }) {
           employee: entry.employee,
           sector: entry.sector,
           detailedReason: entry.detailedReason,
+          pathologyCategory: entry.pathologyCategory,
           absenceType: entry.absenceType,
           certificateType: entry.certificateType,
           detail: entry.notes,
@@ -369,6 +381,7 @@ function Dashboard({ isDark, onToggleTheme }) {
           employee: employeeIndexById.get(employeeId)?.fullName || record.employee,
           sector: employeeIndexById.get(employeeId)?.sector,
           certificateType: record.title,
+          pathologyCategory: record.pathologyCategory,
           detail: record.notes,
           detailedReason: record.detailedReason,
           reference: record.id,

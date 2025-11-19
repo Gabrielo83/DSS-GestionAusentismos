@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import AppHeader from "../components/AppHeader.jsx";
 import { mockEmployees } from "../data/mockEmployees.js";
+import { pathologyCategories } from "../data/pathologyCategories.js";
 import { readEmployeeHistory } from "../utils/historyStorage.js";
 import { readValidationQueue } from "../utils/validationStorage.js";
 
@@ -83,6 +84,13 @@ const formatDisplayDate = (value) => {
     year: "numeric",
   });
 };
+
+const pathologyCategoryMap = Object.fromEntries(
+  pathologyCategories.map((item) => [item.value, item.label]),
+);
+
+const formatPathologyCategory = (value) =>
+  pathologyCategoryMap[value] || value || "No indicado";
 
 const statusStyles = {
   Apto:
@@ -218,6 +226,8 @@ export default function MedicalRecords({ isDark, onToggleTheme }) {
         reviewer: item.reviewer || "Equipo Medico",
         institution: item.institution || "No indicado",
         days: item.days || "-",
+        pathologyCategory: formatPathologyCategory(item.pathologyCategory),
+        cieCode: item.cieCode || "",
         document: item.document || "Documento no disponible",
         documentMeta: item.documentMeta || null,
       };
@@ -245,6 +255,8 @@ export default function MedicalRecords({ isDark, onToggleTheme }) {
           item.absenceDays ??
           getDaysBetween(item.startDate, item.endDate) ??
           "-",
+        pathologyCategory: formatPathologyCategory(item.pathologyCategory),
+        cieCode: item.cieCode || "",
         document: item.certificateFileMeta?.name || "Documento pendiente",
         documentMeta: item.certificateFileMeta || null,
       };
@@ -608,6 +620,12 @@ export default function MedicalRecords({ isDark, onToggleTheme }) {
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {formatDaysLabel(certificate.days)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Grupo: {certificate.pathologyCategory || "No indicado"}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        CIE-10: {certificate.cieCode || "No informado"}
                       </p>
                       {certificate.detail ? (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
