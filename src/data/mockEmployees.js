@@ -181,6 +181,15 @@ const employeeSeeds = [
     bloodType: "AB+",
     seniority: "8 anos",
   },
+  {
+    fullName: "Hugo Gabriel Caamaño",
+    sector: "Salud Ocupacional",
+    position: "Licenciado en Seguridad e Higiene",
+    email: "hugogabriel@empresa.com",
+    phone: "+54 9 11 4567-1020",
+    bloodType: "0+",
+    seniority: "3 anos",
+  },
 ];
 
 export const mockEmployees = employeeSeeds.map((seed, index) => ({

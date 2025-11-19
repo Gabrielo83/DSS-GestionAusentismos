@@ -253,7 +253,8 @@ function Dashboard({ isDark, onToggleTheme }) {
   const dynamicEmployees = useMemo(() => {
     const buckets = new Map(); // employee -> Map(pathology -> info)
 
-    const registerOccurrence = (payload = {}) => {
+    const registerOccurrence = (payload = {}, options = {}) => {
+      const { isCountable = true } = options;
       const pathologyLabel = resolvePathologyLabel(payload);
       if (!pathologyLabel) return;
 
@@ -310,7 +311,7 @@ function Dashboard({ isDark, onToggleTheme }) {
         display: null,
       };
 
-      const count = existing.count + 1;
+      const count = existing.count + (isCountable ? 1 : 0);
       const next = {
         count,
         latest: Math.max(existing.latest, updatedAt),
@@ -336,19 +337,22 @@ function Dashboard({ isDark, onToggleTheme }) {
     };
 
     validationQueue.forEach((entry) => {
-      registerOccurrence({
-        employeeId: entry.employeeId,
-        employee: entry.employee,
-        sector: entry.sector,
-        detailedReason: entry.detailedReason,
-        absenceType: entry.absenceType,
-        certificateType: entry.certificateType,
-        detail: entry.notes,
-        reference: entry.reference,
-        updatedAt: entry.lastDecisionAt || entry.submitted,
-        riskScoreValue: entry.riskScoreValue,
-        riskScore: entry.riskScore,
-      });
+      registerOccurrence(
+        {
+          employeeId: entry.employeeId,
+          employee: entry.employee,
+          sector: entry.sector,
+          detailedReason: entry.detailedReason,
+          absenceType: entry.absenceType,
+          certificateType: entry.certificateType,
+          detail: entry.notes,
+          reference: entry.reference,
+          updatedAt: entry.lastDecisionAt || entry.submitted,
+          riskScoreValue: entry.riskScoreValue,
+          riskScore: entry.riskScore,
+        },
+        { isCountable: false },
+      );
     });
 
     Object.entries(historySnapshot || {}).forEach(([employeeId, records]) => {
@@ -360,6 +364,7 @@ function Dashboard({ isDark, onToggleTheme }) {
           sector: employeeIndexById.get(employeeId)?.sector,
           certificateType: record.title,
           detail: record.notes,
+          detailedReason: record.detailedReason,
           reference: record.id,
           updatedAt: record.issued,
           riskScoreValue: record.riskScore,
@@ -435,7 +440,31 @@ function Dashboard({ isDark, onToggleTheme }) {
         : null,
     }));
 
-    const combined = [...normalizedPending, ...normalizedHistory];
+    const recordMap = new Map();
+    const registerRecord = (entry, allowOverride = false) => {
+      if (!entry) return;
+      const key =
+        entry.id ||
+        entry.reference ||
+        `${entry.title || "registro"}-${entry.issued || Date.now()}`;
+      if (!key) return;
+      if (!recordMap.has(key) || allowOverride) {
+        recordMap.set(key, entry);
+      }
+    };
+
+    normalizedPending.forEach((entry) => registerRecord(entry, true));
+    normalizedHistory.forEach((entry) => {
+      const key =
+        entry.id ||
+        entry.reference ||
+        `${entry.title || "registro"}-${entry.issued || Date.now()}`;
+      if (!recordMap.has(key)) {
+        recordMap.set(key, entry);
+      }
+    });
+
+    const combined = Array.from(recordMap.values());
     setHistoryModal({
       isOpen: true,
       employee: employee.name,

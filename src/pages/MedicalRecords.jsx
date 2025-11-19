@@ -52,7 +52,7 @@ const buildMedicalFiles = (employees) =>
     })),
   }));
 
-const medicalFiles = buildMedicalFiles(mockEmployees.slice(0, 20));
+const medicalFiles = buildMedicalFiles(mockEmployees);
 
 const isWithinRange = (dateValue, startDate, endDate) => {
   const parsedDate = Date.parse(dateValue);
@@ -71,6 +71,17 @@ const getDaysBetween = (startDate, endDate) => {
   if (Number.isNaN(start) || Number.isNaN(end)) return null;
   const difference = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
   return difference > 0 ? difference : null;
+};
+
+const formatDisplayDate = (value) => {
+  if (!value) return "Sin fecha";
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) return value;
+  return new Date(timestamp).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 const statusStyles = {
@@ -195,12 +206,14 @@ export default function MedicalRecords({ isDark, onToggleTheme }) {
       const reference =
         normalizeReferenceValue(item.reference) ||
         normalizeReferenceValue(item.id);
+      const issuedValue = item.issued || item.issueDate || "";
       return {
         id: item.id || `HIS-${profile.id}-${item.issued || Date.now()}`,
         reference: reference || "--",
         title: item.title || "Certificado medico",
         detail: item.notes || "",
-        issued: item.issued || "",
+        issued: issuedValue,
+        issuedLabel: formatDisplayDate(issuedValue),
         status: item.status || "Validado",
         reviewer: item.reviewer || "Equipo Medico",
         institution: item.institution || "No indicado",
@@ -211,13 +224,20 @@ export default function MedicalRecords({ isDark, onToggleTheme }) {
     });
     const normalizedQueue = queue.map((item) => {
       const reference = normalizeReferenceValue(item.reference);
+      const issuedValue =
+        item.issueDate ||
+        item.startDate ||
+        (item.receivedTimestamp
+          ? new Date(item.receivedTimestamp).toISOString()
+          : item.submitted || "");
       return {
         id: item.reference,
         reference: reference || item.reference || "--",
         title:
           item.certificateType || item.absenceType || "Certificado pendiente",
         detail: item.detailedReason || "",
-        issued: item.submitted || item.issueDate || "",
+        issued: issuedValue,
+        issuedLabel: formatDisplayDate(issuedValue),
         status: item.status || "Pendiente",
         reviewer: "Pendiente de evaluacion",
         institution: item.institution || "No indicado",
@@ -583,7 +603,8 @@ export default function MedicalRecords({ isDark, onToggleTheme }) {
                         Referencia: {certificate.reference || "--"}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {certificate.institution} / {certificate.issued}
+                        {certificate.institution} /{" "}
+                        {certificate.issuedLabel || formatDisplayDate(certificate.issued)}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {formatDaysLabel(certificate.days)}

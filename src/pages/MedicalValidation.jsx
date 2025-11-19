@@ -100,11 +100,25 @@ const extractScoreValue = (value) => {
   return null;
 };
 
+const parseLocalDateValue = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const [, year, month, day] = match;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const formatDateValue = (value) => {
   if (!value) return "";
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return value;
-  return new Date(timestamp).toLocaleDateString("es-AR", {
+  const parsed = parseLocalDateValue(value);
+  if (!parsed) return value;
+  return parsed.toLocaleDateString("es-AR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -489,6 +503,12 @@ function MedicalValidation({ isDark, onToggleTheme }) {
       institution: updatedEntry.institution || "No indicado",
       notes: trimmedNotes || `Resultado: ${actionConfig.status}`,
       reviewer: reviewerName,
+      detailedReason:
+        selectedCertificate.detailedReason ||
+        updatedEntry.detailedReason ||
+        selectedCertificate.notes ||
+        updatedEntry.notes ||
+        "",
       riskScore: entryRisk.score,
       riskLevel: entryRisk.level,
       riskDescriptor: entryRisk.descriptor,
@@ -1170,35 +1190,35 @@ function MedicalValidation({ isDark, onToggleTheme }) {
                     </ol>
                   </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900/70">
                     <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                      Datos del empleado
+                      Resumen del empleado
                     </p>
-                    <div className="mt-4 grid gap-3 text-sm text-slate-800 dark:text-white sm:grid-cols-2">
+                    <div className="mt-4 space-y-3 text-sm text-slate-800 dark:text-white">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                           Nombre completo
                         </p>
-                        <p className="font-semibold">
-                          {selectedCertificate.employee}
-                        </p>
+                        <p className="font-semibold">{selectedCertificate.employee}</p>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          ID empleado
-                        </p>
-                        <p className="font-semibold">
-                          {selectedCertificate.employeeId || "No indicado"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Departamento
-                        </p>
-                        <p className="font-semibold">
-                          {selectedCertificate.sector || "No indicado"}
-                        </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            ID empleado
+                          </p>
+                          <p className="font-semibold">
+                            {selectedCertificate.employeeId || "No indicado"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Departamento
+                          </p>
+                          <p className="font-semibold">
+                            {selectedCertificate.sector || "No indicado"}
+                          </p>
+                        </div>
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -1210,12 +1230,59 @@ function MedicalValidation({ isDark, onToggleTheme }) {
                   </div>
                   <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900/70">
                     <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                      Datos del certificado
+                      Periodo y prioridad
                     </p>
-                    <div className="mt-4 grid gap-3 text-sm text-slate-800 dark:text-white sm:grid-cols-2">
+                    <div className="mt-4 space-y-3 text-sm text-slate-800 dark:text-white">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Fecha inicio
+                          </p>
+                          <p className="font-semibold">
+                            {modalStartDate || "No indicado"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Fecha fin
+                          </p>
+                          <p className="font-semibold">
+                            {modalEndDate || "No indicado"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Dias solicitados
+                          </p>
+                          <p className="font-semibold">
+                            {modalAbsenceDays
+                              ? `${modalAbsenceDays} ${
+                                  modalAbsenceDays === 1 ? "dia" : "dias"
+                                }`
+                              : "No definido"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Prioridad
+                          </p>
+                          <p className="font-semibold">
+                            {selectedCertificate.priority || "No definida"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900/70">
+                    <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                      Diagnostico e institucion
+                    </p>
+                    <div className="mt-4 space-y-3 text-sm text-slate-800 dark:text-white">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Tipo
+                          Tipo de certificado
                         </p>
                         <p className="font-semibold">
                           {selectedCertificate.certificateType || "No indicado"}
@@ -1223,82 +1290,19 @@ function MedicalValidation({ isDark, onToggleTheme }) {
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Referencia
+                          Institucion medica
                         </p>
                         <p className="font-semibold">
-                          {selectedCertificate.reference}
+                          {selectedCertificate.institution || "No indicada"}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Emision
+                          Diagnostico
                         </p>
-                        <p className="font-semibold">
-                          {modalStartDate || "No indicado"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Validez
-                        </p>
-                        <p className="font-semibold">
-                          {modalEndDate || "No indicado"}
-                        </p>
+                        <p className="font-semibold">{modalReason}</p>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900/70">
-                    <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                      Periodo de ausencia
-                    </p>
-                    <div className="mt-4 grid gap-3 text-sm text-slate-800 dark:text-white sm:grid-cols-2">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Fecha inicio
-                        </p>
-                        <p className="font-semibold">
-                          {modalStartDate || "No indicado"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Fecha fin
-                        </p>
-                        <p className="font-semibold">
-                          {modalEndDate || "No indicado"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Dias solicitados
-                        </p>
-                        <p className="font-semibold">
-                          {modalAbsenceDays
-                            ? `${modalAbsenceDays} ${
-                                modalAbsenceDays === 1 ? "dia" : "dias"
-                              }`
-                            : "No definido"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          Prioridad
-                        </p>
-                        <p className="font-semibold">
-                          {selectedCertificate.priority || "No definida"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900/70">
-                    <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                      Diagnostico detallado
-                    </p>
-                    <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                      {modalReason}
-                    </p>
                   </div>
                 </div>
                 <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900/70">

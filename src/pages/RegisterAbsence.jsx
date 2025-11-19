@@ -246,14 +246,18 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
   const overlapRanges = useMemo(() => {
     if (!formValues.employeeId) return [];
     const ranges = [];
+    const currentReference = activeRevisionEntry?.reference || certificateReference;
+    const currentDraftId = activeDraftId;
     (validationQueue || []).forEach((item) => {
       if (item.employeeId !== formValues.employeeId) return;
+      if (currentReference && item.reference === currentReference) return;
       if (item.startDate && item.endDate) {
         ranges.push({ start: item.startDate, end: item.endDate, source: "validations" });
       }
     });
     (drafts || []).forEach((draft) => {
       if (draft.formValues?.employeeId !== formValues.employeeId) return;
+      if (currentDraftId && draft.draftId === currentDraftId) return;
       const dStart = draft.formValues?.startDate;
       const dEnd = draft.formValues?.endDate;
       if (dStart && dEnd) {
@@ -263,6 +267,7 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
     const historyEntries = readEmployeeHistory(formValues.employeeId) || [];
     historyEntries.forEach((record) => {
       if (record.issued) {
+        if (currentReference && record.reference === currentReference) return;
         const endDate =
           record.endDate ||
           (record.days
@@ -274,7 +279,14 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
       }
     });
     return ranges;
-  }, [formValues.employeeId, validationQueue, drafts]);
+  }, [
+    formValues.employeeId,
+    validationQueue,
+    drafts,
+    activeRevisionEntry?.reference,
+    activeDraftId,
+    certificateReference,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -311,9 +323,12 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
     }
     const employeeKey = formValues.employeeId;
     const conflicts = [];
+    const currentReference = activeRevisionEntry?.reference || certificateReference;
+    const currentDraftId = activeDraftId;
 
     (validationQueue || []).forEach((item) => {
       if (item.employeeId !== employeeKey) return;
+      if (currentReference && item.reference === currentReference) return;
       if (rangesOverlap(formValues.startDate, formValues.endDate, item.startDate, item.endDate)) {
         const s = formatDateEs(item.startDate);
         const e = formatDateEs(item.endDate);
@@ -325,6 +340,7 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
 
     (drafts || []).forEach((draft) => {
       if (draft.formValues?.employeeId !== employeeKey) return;
+      if (currentDraftId && draft.draftId === currentDraftId) return;
       const dStart = draft.formValues?.startDate;
       const dEnd = draft.formValues?.endDate;
       if (rangesOverlap(formValues.startDate, formValues.endDate, dStart, dEnd)) {
@@ -338,6 +354,7 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
 
     const historyEntries = readEmployeeHistory(employeeKey) || [];
     historyEntries.forEach((record) => {
+      if (currentReference && record.reference === currentReference) return;
       const endRange =
         record.endDate ||
         (record.days
@@ -355,7 +372,16 @@ function RegisterAbsence({ isDark, onToggleTheme }) {
     });
 
     setOverlapWarnings(conflicts);
-  }, [formValues.employeeId, formValues.startDate, formValues.endDate, validationQueue, drafts]);
+  }, [
+    formValues.employeeId,
+    formValues.startDate,
+    formValues.endDate,
+    validationQueue,
+    drafts,
+    activeRevisionEntry?.reference,
+    activeDraftId,
+    certificateReference,
+  ]);
 
   const resetForm = () => {
     setFormValues(createInitialFormValues());

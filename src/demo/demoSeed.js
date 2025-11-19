@@ -7,6 +7,7 @@ import {
   PREVENTIVE_PLANS_STORAGE_KEY,
   PREVENTIVE_PLANS_UPDATED_EVENT,
 } from "../utils/storageKeys.js";
+import { saveEntity } from "../utils/indexedDbClient.js";
 
 const PLACEHOLDER_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAGCAYAAADgzO9IAAAAFElEQVR42mP8//8/AwXgPxQDAwMADIYH/qAnbcIAAAAASUVORK5CYII=";
@@ -166,9 +167,21 @@ const createHistoryRecord = (
   employeeKey,
 });
 
+const IDB_TARGETS = {
+  [MEDICAL_VALIDATIONS_STORAGE_KEY]: { store: "validations", key: "queue" },
+  [MEDICAL_HISTORY_STORAGE_KEY]: { store: "history", key: "records" },
+  [PREVENTIVE_PLANS_STORAGE_KEY]: { store: "plans", key: "plans" },
+};
+
 const persistWithEvent = (key, value, eventName) => {
   window.localStorage.setItem(key, JSON.stringify(value));
   window.dispatchEvent(new Event(eventName));
+  const target = IDB_TARGETS[key];
+  if (target) {
+    saveEntity(target.store, target.key, value).catch((error) =>
+      console.warn("No se pudo sincronizar demo seed con IndexedDB:", error),
+    );
+  }
 };
 
 export const runDemoSeed = () => {
